@@ -8,7 +8,7 @@ export const loginUser = createAsyncThunk(
 	async ({ payload, onSuccess, onError }, thunkAPI) => {
 		try {
 			const { data, status } = await axiosInstance.post(
-				'/Auth/Login/',
+				'/api/v1/user/',
 				payload
 			);
 			if (status == 200 && data.details.UserID) {

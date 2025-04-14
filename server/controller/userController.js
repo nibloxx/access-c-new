@@ -1,336 +1,196 @@
-import bcrypt from "bcrypt";
-import User from "../model/userModel.js";
-import generateToken from "../utils/token.js";
+import User from '../model/User.js';
+import Team from '../model/Team.js';
+import Role from '../model/Role.js';
+import { logActivity } from '../utils/logger.js';
 
-
-
-
-// // USER LOGIN
- export const userLogIn = async (req, res) => {
+// Get all users
+export const getAllUsers = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    // GET  CREDENTIALS
-    if (!email || !password) {
-      return res.status(400).json({
-        status: "fail",
-        error: "Please provide your credentials",
-      });
-    }
-
-    // FIND USER
-    const user = await User.findOne({ email: email });
-    if (!user) {
-      return res.status(400).json({
-        status: "fail",
-        error: "No user found",
-      });
-    }
-
-    // CHECK PASSWORD
-    const checkPassword = await bcrypt.compare(password, user.password);
-    if (!checkPassword) {
-      return res.status(400).json({
-        status: "fail",
-        error: "wrong password",
-      });
-    }
-
-    // GENERATE TOKEN
-    const token = generateToken(user);
-
-    // CLIENT DATA
-    const userData = {
-      _id: user._id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role,
-    };
-
-    res.status(200).json({
-      status: "success",
-      message: "User sign in successfully",
-      data: {
-        userData,
-        token,
-      },
-    });
+    const users = await User.find()
+      .select('-password')
+      .populate('roles', 'name')
+      .populate('teams', 'name');
+    
+    res.json(users);
   } catch (error) {
-    res.status(400).json({
-      status: "fail",
-      error: error.message,
-    });
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// // Create User
-//  const createUser = async (req, res) => {
-//   try {
-
-//     const user = new User(req.body);
-//     await user.save();
-//     res.status(201).json(user);
-//   } catch (err) {
-//     res.status(400).json({ error: err.message });
-//   }
-// };
-
-// // Get All Users
-//  const getUsers = async (req, res) => {
-//   try {
-//     const users = await User.find().populate('team');
-//     res.status(200).json(users);
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// };
-
-// // Update User
-//  const updateUser = async (req, res) => {
-//   try {
-//     const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-//     res.status(200).json(user);
-//   } catch (err) {
-//     res.status(400).json({ error: err.message });
-//   }
-// };
-
-// // Delete User
-//  const deleteUser = async (req, res) => {
-//   try {
-//     await User.findByIdAndDelete(req.params.id);
-//     res.status(200).json({ message: 'User deleted' });
-//   } catch (err) {
-//     res.status(400).json({ error: err.message });
-//   }
-// };
-
-// export {
-//   userLogIn,
-//   createUser,
-//   getUsers,
-//   updateUser,
-//   deleteUser
-// }
-
-
-
-// Utility function for IP validation
-// const isValidIP = (ip) => {
-//   return /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(ip);
-// };
-
-// @desc    Create new user
-// @route   POST /api/users
-export const createUser = async (req, res) => {
-  try {
-    // Validate IP whitelist
-    // if (req.body.ipWhitelist) {
-    //   const invalidIPs = req.body.ipWhitelist.filter(ip => !isValidIP(ip));
-    //   if (invalidIPs.length > 0) {
-    //     return res.status(400).json({ 
-    //       error: `Invalid IP addresses: ${invalidIPs.join(', ')}`
-    //     });
-    //   }
-    // }
-
-    const user = new User({
-      ...req.body,
-      // Ensure default values
-      status: 'Offline',
-      manager: req.body.manager || 'none'
-    });
-
-    await user.save();
-    
-    // Return user without sensitive data
-    res.status(201).json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      devices: user.devices,
-      createdAt: user.createdAt
-    });
-  } catch (err) {
-    res.status(400).json({
-      error: err.message,
-      details: err.errors ? Object.values(err.errors).map(e => e.message) : []
-    });
-  }
-};
-
-// @desc    Get all users
-// @route   GET /api/users
-export const getUsers = async (req, res) => {
-  try {
-    const { status, role } = req.query;
-    const filter = {};
-    
-    if (status) filter.status = status;
-    if (role) filter.role = role;
-
-    const users = await User.find(filter)
-      .select('-__v -ipWhitelist')
-      .lean();
-
-    res.status(200).json(users);
-  } catch (err) {
-    res.status(500).json({ 
-      error: 'Server error',
-      details: err.message
-    });
-  }
-};
-
-// @desc    Get single user
-// @route   GET /api/users/:id
-export const getUser = async (req, res) => {
+// Get user by ID
+export const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-      .select('-__v')
-      .lean();
-
+      .select('-password')
+      .populate('roles', 'name permissions')
+      .populate({
+        path: 'teams',
+        populate: {
+          path: 'projects',
+          model: 'Project'
+        }
+      });
+    
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ message: 'User not found' });
     }
-
-    res.status(200).json(user);
-  } catch (err) {
-    res.status(500).json({ 
-      error: 'Server error',
-      details: err.message
-    });
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Update user
-// @route   PATCH /api/users/:id
+// Create new user (Use Case 1: Admin Requests to Add User)
+export const createUser = async (req, res) => {
+  try {
+    const { username, email, password, firstName, lastName, roles, teams, isAdmin } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Username or email already exists' });
+    }
+    
+    // Create new user
+    const user = new User({
+      username,
+      email,
+      password,
+      firstName,
+      lastName,
+      roles,
+      teams,
+      isAdmin: isAdmin || false
+    });
+    
+    await user.save();
+    
+    // Add user to specified teams
+    if (teams && teams.length) {
+      await Promise.all(teams.map(async (teamId) => {
+        const team = await Team.findById(teamId);
+        if (team) {
+          team.members.push({ user: user._id, role: roles[0] });
+          await team.save();
+        }
+      }));
+    }
+    
+    // Log activity
+    logActivity('createUser', req.user.id, true, {
+      targetUser: user._id,
+      teams,
+      roles
+    });
+    
+    res.status(201).json({ 
+      message: 'User created successfully',
+      user: { id: user._id, username: user.username, email: user.email }
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Update existing user (Use Case 2: Admin Updates User)
 export const updateUser = async (req, res) => {
   try {
-    // Prevent role escalation unless by admin
-    if (req.body.role && req.user.role !== 'Admin') {
-      return res.status(403).json({ error: 'Only admins can change roles' });
+    const { id } = req.params;
+    const { username, email, firstName, lastName, roles, teams, isAdmin } = req.body;
+    
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-
-    // Validate devices array if updating
-    if (req.body.devices) {
-      const invalidDevices = req.body.devices.filter(
-        d => !d.deviceId || !d.deviceType
-      );
-      if (invalidDevices.length > 0) {
-        return res.status(400).json({ 
-          error: 'Devices must have deviceId and deviceType'
-        });
-      }
+    
+    // Update user fields
+    if (username) user.username = username;
+    if (email) user.email = email;
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (isAdmin !== undefined) user.isAdmin = isAdmin;
+    if (roles) user.roles = roles;
+    
+    // Handle team updates
+    if (teams) {
+      // Remove user from teams they're no longer part of
+      const oldTeams = user.teams;
+      const teamsToRemove = oldTeams.filter(team => !teams.includes(team.toString()));
+      
+      await Promise.all(teamsToRemove.map(async (teamId) => {
+        const team = await Team.findById(teamId);
+        if (team) {
+          team.members = team.members.filter(member => member.user.toString() !== id);
+          await team.save();
+        }
+      }));
+      
+      // Add user to new teams
+      const teamsToAdd = teams.filter(team => !oldTeams.includes(team));
+      
+      await Promise.all(teamsToAdd.map(async (teamId) => {
+        const team = await Team.findById(teamId);
+        if (team) {
+          team.members.push({ user: user._id, role: roles[0] });
+          await team.save();
+        }
+      }));
+      
+      user.teams = teams;
     }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).select('-__v');
-
-    if (!updatedUser) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.status(200).json(updatedUser);
-  } catch (err) {
-    res.status(400).json({
-      error: 'Validation failed',
-      details: err.errors ? Object.values(err.errors).map(e => e.message) : []
+    
+    user.updatedAt = Date.now();
+    await user.save();
+    
+    // Log activity
+    logActivity('updateUser', req.user.id, true, {
+      targetUser: user._id,
+      updatedFields: Object.keys(req.body)
     });
+    
+    res.json({ message: 'User updated successfully', user: { id: user._id } });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Delete user
-// @route   DELETE /api/users/:id
+// Delete user (Use Case 3: Admin Deletes User)
 export const deleteUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.status(200).json({ 
-      message: 'User deleted successfully',
-      deletedId: user._id 
-    });
-  } catch (err) {
-    res.status(500).json({ 
-      error: 'Server error',
-      details: err.message
-    });
-  }
-};
-
-// @desc    Add device to user
-// @route   POST /api/users/:id/devices
-export const addDevice = async (req, res) => {
-  try {
-    const { deviceId, deviceType } = req.body;
+    const { id } = req.params;
     
-    if (!deviceId || !deviceType) {
-      return res.status(400).json({ 
-        error: 'deviceId and deviceType are required' 
-      });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      {
-        $push: {
-          devices: {
-            deviceId,
-            deviceType,
-            lastAccessed: new Date()
-          }
-        }
-      },
-      { new: true }
-    ).select('username devices');
-
+    // Find user to delete
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ message: 'User not found' });
     }
-
-    res.status(200).json(user);
-  } catch (err) {
-    res.status(400).json({
-      error: 'Validation failed',
-      details: err.message
-    });
-  }
-};
-
-// @desc    Update user status
-// @route   PATCH /api/users/:id/status
-export const updateStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
     
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { 
-        status,
-        lastActiveAt: status === 'Online' ? new Date() : undefined
-      },
-      { new: true }
-    ).select('username status lastActiveAt');
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.status(200).json(user);
-  } catch (err) {
-    res.status(400).json({
-      error: 'Validation failed',
-      details: err.message
+    // Check dependencies before deletion
+    const teams = await Team.find({ 'members.user': id });
+    
+    // Remove user from all teams
+    await Promise.all(teams.map(async (team) => {
+      team.members = team.members.filter(member => member.user.toString() !== id);
+      await team.save();
+    }));
+    
+    // Delete the user
+    await User.findByIdAndDelete(id);
+    
+    // Log activity
+    logActivity('deleteUser', req.user.id, true, {
+      targetUser: id,
+      teams: teams.map(team => team._id)
     });
+    
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };

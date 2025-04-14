@@ -1,47 +1,77 @@
-import express from "express";
-import cors from "cors";
-import morgan from "morgan";
-import dotenv from "dotenv";
-import colors from "colors";
-import connectDB from "./config/db.js";
-import userRouter from "./routes/userRoute.js";
-import applicationRouter from "./routes/applicationRoute.js";
-import adminRouter from "./routes/adminRoutes.js";
-import coachRouter from "./routes/coachRoutes.js";
-import bookingRouter from "./routes/bookingRoute.js";
-import feedbackRouter from "./routes/feedBackRoutes.js";
-// import {chatingRouter} from "./routes/chatRoutes.js";
-// import {exerciseRouter} from "./routes/exerciseRoutes.js";
+// server/index.js - Main entry point for the DTBAC Admin Dashboard
 
-// APP
-const app = express();
+// Main imports
+import express from 'express';
+import mongoose from 'mongoose';
+import session from 'express-session';
+import path from 'path';
+import morgan from 'morgan';
+import helmet from 'helmet';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-// CONFIG
+// Load environment variables
 dotenv.config();
 
-//MIDDLEWIRES
-app.use(cors());
+// Initialize Express app
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Route imports 
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/user.js';
+import roleRoutes from './routes/role.js';
+import teamRoutes from './routes/team.js';
+import projectRoutes from './routes/project.js';
+import dashboardRoutes from './routes/dashboard.js';
+
+// ES Module dirname setup
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Middleware
+app.use(helmet()); // Security headers
+app.use(morgan('dev')); // Logging
 app.use(express.json());
-app.use(morgan("dev"));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dtbac-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 3600000 } // 1 hour
+}));
 
-// ROUTES
-app.use("/api/v1/user", userRouter);
-app.use("/api/v1/trainer", applicationRouter);
-app.use("/api/v1/admin", adminRouter);
-app.use("/api/v1/coach", coachRouter);
-app.use("/api/v1/booking", bookingRouter);
-app.use("/api/v1/feedback", feedbackRouter);
-// app.use("/api/v1/chat", chatingRouter);
-// app.use("/api/v1/exercise", exerciseRouter);
+// Set view engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
-// HOMEPAGE
-app.get("/", (req, res) => {
-  res.send(`<h1>Wellcome to Gym server Homepage</h1>`);
+// Database connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/dtbac', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('MongoDB connection error:', err));
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/', dashboardRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something went wrong!');
 });
 
-// LISTEN
-const port = process.env.PORT || 8080;
-connectDB();
-app.listen(port, () => {
-  console.log(`server is running on port ${port}`.cyan.bold);
+// Start server
+app.listen(PORT, () => {
+  console.log(`DTBAC Admin Dashboard running on port ${PORT}`);
 });
+
+export default app;
