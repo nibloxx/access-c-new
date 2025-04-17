@@ -8,7 +8,7 @@ const ResponseInterceptor = (response) => {
   return response;
 };
 const RequestInterceptor = (config) => {
-  const token = "";
+  const token = localStorage.getItem("token") || null;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

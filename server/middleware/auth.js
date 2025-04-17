@@ -18,7 +18,7 @@ export const authenticate = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dtbac-secret');
+    const decoded = jwt.verify(token, process.env.JWT_TOKEN_SECRET);
     
     // Find user
     const user = await User.findById(decoded.id).select('-password');

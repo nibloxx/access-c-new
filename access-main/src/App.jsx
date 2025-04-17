@@ -5,6 +5,7 @@ import Login from "./pages/auth/Login";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Profile from "./pages/dashboard/Profile";
 import NotFound from "./pages/NotFound";
+import User from "./pages/users/User";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         {/* Protected Routes */}
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+           <Route path="/users" element={<User />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
 

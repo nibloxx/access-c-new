@@ -1,17 +1,15 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
-  getSubscribedPackaged,
-  getUserProfile,
+  createUser,
+  deleteUser,
+  fetchAllUsers,
   loginUser,
-  registerUser,
-  sendVerifyCode,
-  updatePassword,
-  updateProfile,
-  verifyOTP,
+  updateUser,
 } from "./userThunk";
 
 const initialState = {
   user: null,
+  allUsers: [],
   isLoading: false,
   profileLoader: false,
   userProfile: false,
@@ -33,9 +31,6 @@ export const userSlice = createSlice({
       localStorage.clear();
       state.token = null;
     },
-    updateUser: (state, action) => {
-      // state.user = action.payload;
-    },
   },
 
   extraReducers: (builder) => {
@@ -48,106 +43,71 @@ export const userSlice = createSlice({
       })
 
       .addCase(loginUser.fulfilled, (state, action) => {
-        state.user = action.payload;
-        state.token = action.payload.AccessToken;
+        const { user, token } = action.payload;
+        state.user = user;
+        state.token = token;
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("token", token);
         state.isLoading = false;
       })
       .addCase(loginUser.rejected, (state) => {
         state.isLoading = false;
       })
-
-      //Register User
-
-      .addCase(registerUser.pending, (state) => {
+      // Fetch All Users
+      .addCase(fetchAllUsers.pending, (state) => {
         state.isLoading = true;
       })
 
-      .addCase(registerUser.fulfilled, (state) => {
+      .addCase(fetchAllUsers.fulfilled, (state, action) => {
+        state.allUsers = action.payload;
+        state.isLoading = false;
+      })
+      .addCase(fetchAllUsers.rejected, (state) => {
         state.isLoading = false;
       })
 
-      .addCase(registerUser.rejected, (state) => {
-        state.isLoading = false;
-      })
-
-      //  Get User Profile
-
-      .addCase(getUserProfile.pending, (state) => {
-        state.userProfileLoader = true;
-      })
-
-      .addCase(getUserProfile.fulfilled, (state, action) => {
-        state.user = { ...state.user, ...action.payload };
-        state.userProfileLoader = false;
-      })
-
-      .addCase(getUserProfile.rejected, (state) => {
-        state.userProfileLoader = false;
-      })
-      //  send otp
-      .addCase(sendVerifyCode.pending, (state) => {
+      // Create User
+      .addCase(createUser.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(sendVerifyCode.fulfilled, (state) => {
+      .addCase(createUser.fulfilled, (state, action) => {
+        state.allUsers = [action.payload.user,...state.allUsers ];
         state.isLoading = false;
       })
-      .addCase(sendVerifyCode.rejected, (state) => {
+      .addCase(createUser.rejected, (state) => {
         state.isLoading = false;
       })
-      //  veryfy otp
-      .addCase(verifyOTP.pending, (state) => {
+
+      // Update User
+      .addCase(updateUser.pending, (state) => {
+        state.isLoading = true;
+      })  
+      .addCase(updateUser.fulfilled, (state, action) => {
+        console.log('action: ', action);
+        const updatedUser = action.payload.user;
+        const index = state.allUsers.findIndex(user => user._id === updatedUser._id);
+        if (index !== -1) {
+          state.allUsers[index] = updatedUser;
+        }
+        state.isLoading = false;
+      })
+      .addCase(updateUser.rejected, (state) => {
+        state.isLoading = false;
+      })
+      // Delete User
+      .addCase(deleteUser.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(verifyOTP.fulfilled, (state) => {
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        const deletedUserId = action.payload.userId;
+        state.allUsers = state.allUsers.filter(user => user._id !== deletedUserId);
+        state.isLoading = false;
+      })  
+      .addCase(deleteUser.rejected, (state) => {
         state.isLoading = false;
       })
-      .addCase(verifyOTP.rejected, (state) => {
-        state.isLoading = false;
-      })
-
-      //  update profile
-      .addCase(updateProfile.pending, (state) => {
-        state.profileLoader = true;
-      })
-      .addCase(updateProfile.fulfilled, (state, action) => {
-        state.user = { ...state.user, ...action.payload };
-
-        state.profileLoader = false;
-      })
-      .addCase(updateProfile.rejected, (state, action) => {
-        state.profileLoader = false;
-      })
-
-      // Update Passowrd
-      .addCase(updatePassword.pending, (state, action) => {
-        state.isLoading = true;
-      })
-      .addCase(updatePassword.fulfilled, (state, action) => {
-        state.isLoading = false;
-      })
-      .addCase(updatePassword.rejected, (state, action) => {
-        state.isLoading = false;
-      })
-
-      //GET SUBSCRIPTION By ID
-
-      .addCase(getSubscribedPackaged.pending, (state, action) => {
-        // state.isLoading = true;
-      })
-      .addCase(getSubscribedPackaged.fulfilled, (state, action) => {
-        state.user = {
-          ...state.user,
-          SubscribedPlan: action.payload.SubscribedPlan,
-          SubscriptionData: action.payload.SubscriptionData,
-        };
-
-        // state.isLoading = false;
-      })
-      .addCase(getSubscribedPackaged.rejected, (state, action) => {
-        // state.isLoading = false;
-      });
   },
 });
-export const { logoutUser, addUser, updateUser } = userSlice.actions;
+export const { logoutUser, addUser } = userSlice.actions;
 
 export default userSlice.reducer;
