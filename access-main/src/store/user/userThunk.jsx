@@ -7,7 +7,7 @@ export const loginUser = createAsyncThunk(
   async ({ payload, onSuccess, onError }, thunkAPI) => {
     try {
       const { data, status } = await axiosInstance.post(
-		  "/api/auth/login",
+		  "/auth/login",
 		  payload
 		);
       if (status == 200) {
@@ -32,7 +32,7 @@ export const fetchAllUsers = createAsyncThunk(
   "user/fetchAllUsers",
   async (_, thunkAPI) => {
     try {
-      const { data, status } = await axiosInstance.get("/api/users");
+      const { data, status } = await axiosInstance.get("/users");
       if (status == 200) {
         return data;
       }
@@ -47,7 +47,7 @@ export const createUser = createAsyncThunk(
   "user/createUser",
   async ({ payload, onSuccess, onError }, thunkAPI) => {
     try {
-      const { data, status } = await axiosInstance.post("/api/users", payload);
+      const { data, status } = await axiosInstance.post("/users", payload);
       if (status == 201) {
         onSuccess();
         toast.success("User Created Successfully...!");
@@ -69,7 +69,7 @@ export const updateUser = createAsyncThunk(
 
 	try {
 	  const { data, status } = await axiosInstance.put(
-		`/api/users/${id}`,
+		`/users/${id}`,
 		payload
 	  );
 	  if (status == 200) {
@@ -92,7 +92,7 @@ export const deleteUser = createAsyncThunk(
   async ({ userId, onSuccess, onError }, thunkAPI) => {
     try {
       const { data, status } = await axiosInstance.delete(
-        `/api/users/${userId}`
+        `/users/${userId}`
       );
    
       if (status == 200) {

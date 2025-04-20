@@ -6,6 +6,8 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import Profile from "./pages/dashboard/Profile";
 import NotFound from "./pages/NotFound";
 import User from "./pages/users/User";
+import RoleManagement from "./pages/role/RoleManagement";
+import ResourceManagement from "./pages/resource-management/ResourceManagement";
 
 function App() {
   return (
@@ -22,7 +24,11 @@ function App() {
         {/* Protected Routes */}
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-           <Route path="/users" element={<User />} />
+           <Route path="/users-management" element={<User />} />
+          <Route path="/roles-management" element={<RoleManagement />} />
+          <Route path="/resource-management" element={<ResourceManagement />} />
+
+
           <Route path="/profile" element={<Profile />} />
         </Route>
 

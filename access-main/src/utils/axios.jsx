@@ -1,5 +1,5 @@
 import axios from "axios";
-export const baseDomain = "http://localhost:5000";
+export const baseDomain = "http://localhost:5000/api";
 
 export const axiosInstance = axios.create({
   baseURL: baseDomain,

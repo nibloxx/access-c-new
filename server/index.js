@@ -25,6 +25,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import roleRoutes from './routes/role.js';
 import teamRoutes from './routes/team.js';
+import resourceRoutes from './routes/resource.js'; // Add this line
 import projectRoutes from './routes/project.js';
 import dashboardRoutes from './routes/dashboard.js';
 
@@ -74,6 +75,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/teams', teamRoutes);
+app.use('/api/resources', resourceRoutes); // Add this line
 app.use('/api/projects', projectRoutes);
 app.use('/', dashboardRoutes);
 

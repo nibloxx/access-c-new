@@ -83,3 +83,19 @@ export const VALIDATION = {
         MESSAGE: 'Username must be 3-20 characters long and can contain letters, numbers, underscores, and hyphens'
     }
 };
+
+
+export const RESOURCE_TYPES = {
+    DOCUMENT: 'DOCUMENT',
+    APPLICATION: 'APPLICATION',
+    DATABASE: 'DATABASE',
+    API: 'API',
+    SERVICE: 'SERVICE'
+  };
+  
+  export const ACCESS_LEVELS = {
+    READ: 'READ',
+    WRITE: 'WRITE',
+    ADMIN: 'ADMIN',
+    NONE: 'NONE'
+  };
