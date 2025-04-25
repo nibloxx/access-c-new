@@ -77,7 +77,7 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/resources', resourceRoutes); // Add this line
 app.use('/api/projects', projectRoutes);
-app.use('/', dashboardRoutes);
+app.use('/api', dashboardRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

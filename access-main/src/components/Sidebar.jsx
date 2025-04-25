@@ -35,6 +35,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/users-management", icon: Users, label: "Users Management" },
     { path: "/roles-management", icon: ShieldCheck, label: "Role Management" },
     { path: "/resource-management", icon: Database, label: "Resource Management" },
+    { path: "/access-log", icon: Database, label: "Access-log" },
+
   ];
 
   const handleLogout = () => {

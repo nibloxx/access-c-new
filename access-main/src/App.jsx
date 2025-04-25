@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import User from "./pages/users/User";
 import RoleManagement from "./pages/role/RoleManagement";
 import ResourceManagement from "./pages/resource-management/ResourceManagement";
+import AccessLog from "./pages/access-logs/AccessLog";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
            <Route path="/users-management" element={<User />} />
           <Route path="/roles-management" element={<RoleManagement />} />
           <Route path="/resource-management" element={<ResourceManagement />} />
+          <Route path="/access-log" element={<AccessLog />} />
 
 
           <Route path="/profile" element={<Profile />} />
