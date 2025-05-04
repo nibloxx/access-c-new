@@ -2,6 +2,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
+  HelpCircleIcon,
   LayoutDashboard,
   LogOut,
   ShieldCheck,
@@ -36,6 +37,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/roles-management", icon: ShieldCheck, label: "Role Management" },
     { path: "/resource-management", icon: Database, label: "Resource Management" },
     { path: "/access-log", icon: Database, label: "Access-log" },
+    {path :"/faq", icon: HelpCircleIcon , label: "FAQ"},
 
   ];
 

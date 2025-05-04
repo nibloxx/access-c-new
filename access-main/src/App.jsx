@@ -9,6 +9,7 @@ import User from "./pages/users/User";
 import RoleManagement from "./pages/role/RoleManagement";
 import ResourceManagement from "./pages/resource-management/ResourceManagement";
 import AccessLog from "./pages/access-logs/AccessLog";
+import FAQ from "./pages/faq/FAQ";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           <Route path="/roles-management" element={<RoleManagement />} />
           <Route path="/resource-management" element={<ResourceManagement />} />
           <Route path="/access-log" element={<AccessLog />} />
+          <Route path="/FAQ" element={<FAQ />} />
 
 
           <Route path="/profile" element={<Profile />} />

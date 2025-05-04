@@ -25,8 +25,9 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import roleRoutes from './routes/role.js';
 import teamRoutes from './routes/team.js';
-import resourceRoutes from './routes/resource.js'; // Add this line
+import resourceRoutes from './routes/resource.js';
 import projectRoutes from './routes/project.js';
+import faqRoutes from './routes/faq.js';
 import dashboardRoutes from './routes/dashboard.js';
 
 // ES Module dirname setup
@@ -75,8 +76,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/teams', teamRoutes);
-app.use('/api/resources', resourceRoutes); // Add this line
+app.use('/api/resources', resourceRoutes); 
 app.use('/api/projects', projectRoutes);
+app.use('/api/faqs', faqRoutes);  
 app.use('/api', dashboardRoutes);
 
 // Error handling middleware

@@ -1,51 +1,172 @@
+import React, { useState, useEffect } from 'react';
+import { axiosInstance } from '../../utils/axios';
+import { Users, Briefcase, UserCheck, FolderGit2 } from 'lucide-react';
+
 const Dashboard = () => {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Stats Cards */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
-                  {/* Icon can be placed here */}
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Users</dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">71,897</div>
-                  </dd>
-                </div>
-              </div>
-            </div>
+  const [stats, setStats] = useState({
+    counts: {
+      users: 0,
+      teams: 0,
+      roles: 0,
+      projects: 0
+    },
+    recentLogs: [],
+    userActivity: [],
+    teamSizes: []
+  });
+
+  const fetchDashboardStats = async () => {
+    try {
+      const response = await axiosInstance.get('/stats');
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  const StatCard = ({ title, value, icon: Icon }) => (
+    <div className="bg-white overflow-hidden shadow rounded-lg">
+      <div className="px-4 py-5 sm:p-6">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+            <Icon className="h-6 w-6 text-white" />
           </div>
-  
-          {/* Repeat similar cards for other stats */}
-        </div>
-  
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
-          <div className="mt-4 bg-white shadow overflow-hidden sm:rounded-md">
-            <ul className="divide-y divide-gray-200">
-              {[1, 2, 3].map((item) => (
-                <li key={item}>
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-indigo-600 truncate">Activity {item}</p>
-                      <div className="ml-2 flex-shrink-0 flex">
-                        <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Completed
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+          <div className="ml-5 w-0 flex-1">
+            <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
+            <dd className="flex items-baseline">
+              <div className="text-2xl font-semibold text-gray-900">{value}</div>
+            </dd>
           </div>
         </div>
       </div>
-    );
-  };
-  
-  export default Dashboard;
+    </div>
+  );
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+      
+      {/* Stats Grid */}
+      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard 
+          title="Total Users" 
+          value={stats.counts.users} 
+          icon={Users} 
+        />
+        <StatCard 
+          title="Total Teams" 
+          value={stats.counts.teams} 
+          icon={Briefcase} 
+        />
+        <StatCard 
+          title="Total Roles" 
+          value={stats.counts.roles} 
+          icon={UserCheck} 
+        />
+        <StatCard 
+          title="Total Projects" 
+          value={stats.counts.projects} 
+          icon={FolderGit2} 
+        />
+      </div>
+
+      {/* Recent Activity */}
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
+        <div className="mt-4 bg-white shadow overflow-hidden sm:rounded-lg">
+          <ul className="divide-y divide-gray-200">
+          {stats.recentLogs.map((log) => (
+  <li key={log._id}>
+    <div className="px-4 py-4 sm:px-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-indigo-600">
+            {log.user?.username || 'Unknown User'}
+          </p>
+          <p className="text-sm text-gray-500">
+            {log.action} - {log.resource || 'Unknown Resource'}
+          </p>
+        </div>
+        <div>
+          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+            log.granted 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-red-100 text-red-800'
+          }`}>
+            {log.granted ? 'Granted' : 'Denied'}
+          </span>
+        </div>
+      </div>
+      <div className="mt-2 text-sm text-gray-500">
+        {new Date(log.timestamp).toLocaleString()}
+      </div>
+    </div>
+  </li>
+))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Team Sizes */}
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold text-gray-900">Team Distribution</h2>
+        <div className="mt-4 bg-white shadow overflow-hidden sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <div className="grid grid-cols-1 gap-4">
+              {stats.teamSizes.map((team) => (
+                <div key={team._id} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">
+                    {team.name}
+                  </span>
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-500">
+                      {team.memberCount} members
+                    </span>
+                    <div className="ml-4 w-24 bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-indigo-500 rounded-full h-2"
+                        style={{
+                          width: `${(team.memberCount / Math.max(...stats.teamSizes.map(t => t.memberCount))) * 100}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* User Activity Chart */}
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold text-gray-900">User Activity (Last 7 Days)</h2>
+        <div className="mt-4 bg-white shadow overflow-hidden sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <div className="h-64 flex items-end space-x-2">
+              {stats.userActivity.map((activity) => (
+                <div
+                  key={activity._id}
+                  className="flex-1 bg-indigo-100 hover:bg-indigo-200 transition-colors"
+                  style={{
+                    height: `${(activity.count / Math.max(...stats.userActivity.map(a => a.count))) * 100}%`
+                  }}
+                >
+                  <div className="transform -rotate-45 translate-y-6 text-xs text-gray-500">
+                    {new Date(activity._id).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
