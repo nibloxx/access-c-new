@@ -10,6 +10,7 @@ import RoleManagement from "./pages/role/RoleManagement";
 import ResourceManagement from "./pages/resource-management/ResourceManagement";
 import AccessLog from "./pages/access-logs/AccessLog";
 import FAQ from "./pages/faq/FAQ";
+import UserProfile from "./pages/user-profile/UserProfile";
 
 function App() {
   return (
@@ -26,14 +27,15 @@ function App() {
         {/* Protected Routes */}
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-           <Route path="/users-management" element={<User />} />
+          <Route path="/users-management" element={<User />} />
           <Route path="/roles-management" element={<RoleManagement />} />
           <Route path="/resource-management" element={<ResourceManagement />} />
           <Route path="/access-log" element={<AccessLog />} />
           <Route path="/FAQ" element={<FAQ />} />
-
-
           <Route path="/profile" element={<Profile />} />
+          <Route path="/user-profile" element={<UserProfile />} />
+
+
         </Route>
 
         {/* 404 Page */}

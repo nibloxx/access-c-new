@@ -5,6 +5,7 @@ import {
   fetchAllUsers,
   loginUser,
   updateUser,
+  updateUserProfile,
 } from "./userThunk";
 
 const initialState = {
@@ -77,6 +78,21 @@ export const userSlice = createSlice({
       .addCase(createUser.rejected, (state) => {
         state.isLoading = false;
       })
+
+      // Update User Profile
+      .addCase(updateUserProfile.pending, (state) => {
+        state.profileLoader = true;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.profileLoader = false;
+        state.user = action.payload.user;
+      })
+      .addCase(updateUserProfile.rejected, (state) => {
+        state.profileLoader = false;
+      })
+
+
+
 
       // Update User
       .addCase(updateUser.pending, (state) => {

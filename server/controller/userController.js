@@ -150,7 +150,7 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, firstName, lastName, roles, teams, isAdmin } =
+    const { username, email, firstName, lastName, address, phone, dateOfBirth, roles, teams, isAdmin } =
       req.body;
 
     const user = await User.findById(id);
@@ -163,6 +163,9 @@ export const updateUser = async (req, res) => {
     if (email) user.email = email;
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;
+    if (address) user.address = address;
+    if (phone) user.phone = phone;
+    if (dateOfBirth) user.dateOfBirth = dateOfBirth;
     if (isAdmin !== undefined) user.isAdmin = isAdmin;
     if (roles) user.roles = roles;
 
@@ -221,6 +224,9 @@ export const updateUser = async (req, res) => {
         lastName: user.lastName,
         isAdmin: user.isAdmin,
         roles: user.roles,
+        address: user.address,
+        phone: user.phone,
+        dateOfBirth: user.dateOfBirth,
         teams: user.teams,
         lastLogin: user.lastLogin,
         contextData: user.contextData,
@@ -234,6 +240,47 @@ export const updateUser = async (req, res) => {
   }
 };
 
+// Update user profile (Use Case 3: User Updates Own Profile)
+export const updateUserProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, email, firstName, lastName, address, phone, dateOfBirth } = req.body;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update user fields
+    if (username) user.username = username;
+    if (email) user.email = email;
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (address) user.address = address;
+    if (phone) user.phone = phone;
+    if (dateOfBirth) user.dateOfBirth = dateOfBirth;
+    
+    await user.save();
+
+    res.json({
+      message: "User profile updated successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        address: user.address,
+        phone: user.phone,
+        dateOfBirth: user.dateOfBirth,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 // Delete user (Use Case 3: Admin Deletes User)
 export const deleteUser = async (req, res) => {
   try {

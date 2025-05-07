@@ -19,6 +19,15 @@ const userSchema = new mongoose.Schema({
   teams: [{ type: mongoose.Schema.Types.ObjectId, ref: "Team" }],
   isAdmin: { type: Boolean, default: false },
   lastLogin: Date,
+  address: {
+    street: String,
+    city: String,
+    state: String,
+    country: String,
+    zipCode: String
+  },
+  phone: String,
+  dateOfBirth: Date,
   contextData: {
     lastKnownLocation: String,
     lastDevice: String,

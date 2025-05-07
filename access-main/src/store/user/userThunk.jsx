@@ -7,9 +7,9 @@ export const loginUser = createAsyncThunk(
   async ({ payload, onSuccess, onError }, thunkAPI) => {
     try {
       const { data, status } = await axiosInstance.post(
-		  "/auth/login",
-		  payload
-		);
+        "/auth/login",
+        payload
+      );
       if (status == 200) {
         onSuccess();
         return data;
@@ -23,6 +23,8 @@ export const loginUser = createAsyncThunk(
       }
     } catch (error) {
       onError("something went wrong");
+      console.log(error.data.message);
+      toast.error(error.data.message);
       return thunkAPI.rejectWithValue(error);
     }
   }
@@ -64,26 +66,26 @@ export const createUser = createAsyncThunk(
 );
 
 export const updateUser = createAsyncThunk(
-	  "user/updateUser",
+  "user/updateUser",
   async ({ id, payload, onSuccess, onError }, thunkAPI) => {
 
-	try {
-	  const { data, status } = await axiosInstance.put(
-		`/users/${id}`,
-		payload
-	  );
-	  if (status == 200) {
-		onSuccess();
-		toast.success("User Updated Successfully...!");
-		return data;
-	  }
-	  onError();
-	  return thunkAPI.rejectWithValue(data.details);
-	} catch (error) {
-	  onError();
-	  toast.error(error.data.details);
-	  return thunkAPI.rejectWithValue(error);
-	}
+    try {
+      const { data, status } = await axiosInstance.put(
+        `/users/${id}`,
+        payload
+      );
+      if (status == 200) {
+        onSuccess();
+        toast.success("User Updated Successfully...!");
+        return data;
+      }
+      onError();
+      return thunkAPI.rejectWithValue(data.details);
+    } catch (error) {
+      onError();
+      toast.error(error.data.details);
+      return thunkAPI.rejectWithValue(error);
+    }
   }
 );
 
@@ -94,15 +96,39 @@ export const deleteUser = createAsyncThunk(
       const { data, status } = await axiosInstance.delete(
         `/users/${userId}`
       );
-   
+
       if (status == 200) {
         onSuccess();
         toast.success("User Deleted Successfully...!");
-        return {userId};
+        return { userId };
       }
       onError();
       return thunkAPI.rejectWithValue(data.details);
     } catch (error) {
+      onError();
+      toast.error(error.data.details);
+      return thunkAPI.rejectWithValue(error);
+    }
+  }
+);
+
+export const updateUserProfile = createAsyncThunk(
+  "user/updateUserProfile",
+  async ({ id, payload, onSuccess, onError }, thunkAPI) => {
+    try {
+      const { data, status } = await axiosInstance.put(
+        `/users/profile/${id}`,
+        payload
+      );
+      if (status == 200) {
+        onSuccess();
+        toast.success("User Profile Updated Successfully...!");
+        return data;
+      }
+      onError();
+    }
+
+    catch (error) {
       onError();
       toast.error(error.data.details);
       return thunkAPI.rejectWithValue(error);

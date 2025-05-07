@@ -1,15 +1,10 @@
-import { Bell, Menu, Search, User, X } from 'lucide-react';
+import { Bell, Menu, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import AvatarDropdown from './AvatarDropdown';
 
 const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  
-  const user = {
-    name: "Admin User",
-    avatar: null,
-    role: "Administrator"
-  };
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-30">
@@ -17,12 +12,12 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         <div className="flex justify-between items-center h-16">
           {/* Left side - Mobile menu button and logo */}
           <div className="flex items-center">
-            {/* <button 
+            <button 
               onClick={toggleSidebar}
               className="p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100 focus:outline-none"
             >
               {isSidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button> */}
+            </button>
             <Link to="/dashboard" className="flex items-center ml-2">
               <span className="text-xl font-bold text-indigo-600">AdminPanel</span>
             </Link>
@@ -58,30 +53,15 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
               <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
             </button>
 
-            {/* User dropdown */}
-            <div className="relative">
-              <div className="flex items-center space-x-2 cursor-pointer group">
-                {user.avatar ? (
-                  <img
-                    className="h-8 w-8 rounded-full"
-                    src={user.avatar}
-                    alt={user.name}
-                  />
-                ) : (
-                  <User className="h-8 w-8 text-gray-400" />
-                )}
-                <span className="hidden md:inline-block text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                  {user.name}
-                </span>
-              </div>
-            </div>
+            {/* Avatar Dropdown */}
+            <AvatarDropdown />
           </div>
         </div>
 
         {/* Mobile search bar */}
         {showMobileSearch && (
-          <div className="md:hidden pb-3">
-            <div className="relative mt-2">
+          <div className="md:hidden p-4 border-t border-gray-200">
+            <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>

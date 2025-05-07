@@ -22,4 +22,6 @@ router.put('/:id', userController.updateUser);
 // Delete user - admin only
 router.delete('/:id', authorizeAdmin, userController.deleteUser);
 
+// Update user profile - self only
+router.put('/profile/:id', userController.updateUserProfile);
 export default router;
