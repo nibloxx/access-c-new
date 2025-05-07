@@ -6,7 +6,6 @@ import { deleteUser, updateUserProfile } from '../../store/user/userThunk';
 
 const UserProfile = () => {
     const { user } = useSelector((state) => state.user);
-    console.log("usre", JSON.stringify(user))
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
