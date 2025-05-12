@@ -1,25 +1,37 @@
 import express from 'express';
 import * as projectController from '../controller/projectController.js';
-import { authenticate, authorizeAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Project routes - all require authentication
-router.use(authenticate);
-
-// Get all projects
 router.get('/', projectController.getAllProjects);
+// router.use(authenticate);
 
-// Get project by ID
 router.get('/:id', projectController.getProjectById);
 
-// Create project - admin only
-router.post('/', authorizeAdmin, projectController.createProject);
+router.post('/', 
+  // authorizeAdmin, 
+  projectController.createProject
+);
 
-// Update project - admin only
-router.put('/:id', authorizeAdmin, projectController.updateProject);
+router.put('/:id', 
+  // authorizeAdmin,
+  // checkPhasePermission('editRoles'), 
+  projectController.updateProject
+);
 
-// Delete project - admin only
-router.delete('/:id', authorizeAdmin, projectController.deleteProject);
+router.put('/:id/models',
+  // checkPhasePermission('editModels'),
+  projectController.updateProjectModels
+);
+
+router.get('/:id/documents',
+  // checkPhasePermission('viewDocuments'),
+  projectController.getProjectDocuments
+);
+
+router.delete('/:id', 
+  // authorizeAdmin, 
+  projectController.deleteProject
+);
 
 export default router;

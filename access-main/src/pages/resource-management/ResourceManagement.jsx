@@ -12,7 +12,6 @@ import ResourceForm from '../../components/resource-management/ResourceForm';
 const ResourceManagement = () => {
   const dispatch = useDispatch();
   const { resources, isLoading } = useSelector((state) => state.resource);
-  console.log('resources: ', resources);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState(null);
   const [filters, setFilters] = useState({

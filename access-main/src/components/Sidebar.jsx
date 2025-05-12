@@ -3,11 +3,12 @@ import {
   ChevronRight,
   Database,
   HelpCircleIcon,
+  Laptop,
   LayoutDashboard,
   LogOut,
   ShieldCheck,
   Users,
-  X
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -35,10 +36,18 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/users-management", icon: Users, label: "Users Management" },
     { path: "/roles-management", icon: ShieldCheck, label: "Role Management" },
-    { path: "/resource-management", icon: Database, label: "Resource Management" },
+    {
+      path: "/resource-management",
+      icon: Database,
+      label: "Resource Management",
+    },
+    {
+      path: "/project-management",
+      icon: Laptop,
+      label: "Project Management",
+    },
     { path: "/access-log", icon: Database, label: "Access-log" },
-    {path :"/faq", icon: HelpCircleIcon , label: "FAQ"},
-
+    { path: "/faq", icon: HelpCircleIcon, label: "FAQ" },
   ];
 
   const handleLogout = () => {

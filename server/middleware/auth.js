@@ -5,6 +5,7 @@ import Role from '../model/Role.js';
 import Team from '../model/Team.js';
 import AccessLog from '../model/AccessLog.js';
 import Project from '../model/Project.js';
+import { ROLES } from '../utils/constrants.js';
 
 // Authenticate user middleware
 export const authenticate = async (req, res, next) => {
@@ -120,4 +121,101 @@ export const contextAwareAccess = (requiredPermissions) => {
       res.status(500).json({ message: 'Error in access control' });
     }
   };
+};
+
+
+
+// Define allowed roles at the top of the file
+const ALLOWED_ROLES = ['SuperAdmin', 'Admin', 'Manager'];
+
+export const checkPhasePermission = (action) => async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const project = await Project.findById(id).populate('teams');
+    
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    const user = req.user;
+    const currentPhase = project.currentPhase;
+    
+    // Check if user has any of the allowed roles first
+    const hasAllowedRole = user.roles.some(role => ALLOWED_ROLES.includes(role));
+
+    // Block create/update/delete operations for non-allowed roles
+    if (['createProject', 'updateProject', 'deleteProject'].includes(action) && !hasAllowedRole) {
+      logActivity('unauthorizedAccess', user._id, false, {
+        projectId: id,
+        action,
+        phase: currentPhase,
+        roles: user.roles
+      });
+      return res.status(403).json({ 
+        message: 'Access denied: Only SuperAdmin, Admin, and Manager can perform this action',
+        requiredRoles: ALLOWED_ROLES
+      });
+    }
+
+    // For other actions, check phase-specific permissions
+    const phasePermissions = project.phasePermissions[currentPhase];
+    if (!phasePermissions) {
+      return res.status(400).json({ 
+        message: `Invalid project phase: ${currentPhase}`
+      });
+    }
+
+    // Check permissions based on action type
+    const hasPermission = user.roles.some(role => {
+      switch (action) {
+        case 'createProject':
+        case 'updateProject':
+        case 'deleteProject':
+          return ALLOWED_ROLES.includes(role);
+        
+        case 'viewDocuments':
+          return phasePermissions.canViewDocuments.includes(role);
+        
+        case 'editModels':
+          if (currentPhase === 'review' && role === ROLES.CONTRACTOR) {
+            return false;
+          }
+          return phasePermissions.canEditModels.includes(role);
+        
+        default:
+          return false;
+      }
+    });
+
+    if (!hasPermission) {
+      logActivity('phasePermissionDenied', user._id, false, {
+        projectId: id,
+        action,
+        phase: currentPhase,
+        roles: user.roles
+      });
+
+      return res.status(403).json({ 
+        message: `${action} not allowed for your role`,
+        phase: currentPhase,
+        requiredRoles: ALLOWED_ROLES
+      });
+    }
+
+    // Add phase context to request
+    req.phaseContext = {
+      currentPhase,
+      permissions: phasePermissions,
+      project,
+      isAllowedRole: hasAllowedRole
+    };
+
+    next();
+  } catch (error) {
+    console.error('Permission check failed:', error);
+    res.status(500).json({ 
+      message: 'Permission check failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
