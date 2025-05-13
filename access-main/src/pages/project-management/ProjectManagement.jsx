@@ -76,10 +76,30 @@ const ProjectManagement = () => {
     }
   };
 
-  const handleUpdateProject = async () => {
+  // const handleUpdateProject = async () => {
+  //   const phase = project.currentPhase;
+    
+  //   if (phase === PROJECT_PHASES.REVIEW && !showWarning) {
+  //     setShowWarning(true);
+  //     return;
+  //   }
+
+  //   if (phase === PROJECT_PHASES.CLOSED) {
+  //     return;
+  //   }
+
+  //   try {
+  //     await axiosInstance.put(`/projects/${project._id}`, formData);  // Use axiosInstance
+  //     fetchProjects();
+  //     resetForm();
+  //   } catch (error) {
+  //     console.error("Error updating project:", error);
+  //   }
+  // };
+  const handleUpdateProject = async (skipWarning = false) => {
     const phase = project.currentPhase;
     
-    if (phase === PROJECT_PHASES.REVIEW && !showWarning) {
+    if (phase === PROJECT_PHASES.REVIEW && !skipWarning && !showWarning) {
       setShowWarning(true);
       return;
     }
@@ -89,14 +109,15 @@ const ProjectManagement = () => {
     }
 
     try {
-      await axiosInstance.put(`/projects/${project._id}`, formData);  // Use axiosInstance
-      fetchProjects();
-      resetForm();
+      const response = await axiosInstance.put(`/projects/${project._id}`, formData);
+      if (response.data) {
+        await fetchProjects();
+        resetForm();
+      }
     } catch (error) {
       console.error("Error updating project:", error);
     }
   };
-
   const handleDeleteProject = async (projectId) => {
     try {
       await axiosInstance.delete(`/projects/${projectId}`);  // Use axiosInstance
@@ -130,7 +151,10 @@ const ProjectManagement = () => {
     setShowResourceModal(false);
     setProject(null);
   };
-
+  const handleProceed = async () => {
+    setShowWarning(false); // Close the warning modal
+    await handleUpdateProject(true); // Pass true to skip warning check
+  };
   if (isLoading) return <Loading />;
 
   return (
@@ -189,7 +213,7 @@ const ProjectManagement = () => {
       <PhaseWarningModal
         isOpen={showWarning}
         onClose={() => setShowWarning(false)}
-        onConfirm={handleUpdateProject}
+        onConfirm={handleProceed}
         phase={project?.currentPhase}
       />
 
