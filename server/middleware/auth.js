@@ -41,7 +41,8 @@ export const authenticate = async (req, res, next) => {
 
 // Authorize admin middleware
 export const authorizeAdmin = (req, res, next) => {
-  if (!req.user.isAdmin) {
+  const hasAdminRole = req.user.roles.some(role => ['SuperAdmin', 'Admin'].includes(role));
+  if (!hasAdminRole) {
     // Log unauthorized access attempt
     logActivity('unauthorizedAccess', req.user._id, false, {
       resource: req.originalUrl,

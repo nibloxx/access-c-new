@@ -1,13 +1,13 @@
 import Team from '../model/Team.js';
 import User from '../model/User.js';
 import { logActivity } from '../utils/logger.js';
+import Project from '../model/Project.js';
 
 // Get all teams
 export const getAllTeams = async (req, res) => {
   try {
     const teams = await Team.find()
-      .populate('members.user', 'username email')
-      .populate('members.role', 'name')
+      .populate('members.user', 'username email firstName lastName')
       .populate('projects', 'name currentPhase');
     
     res.json(teams);
@@ -22,13 +22,12 @@ export const getTeamById = async (req, res) => {
   try {
     const team = await Team.findById(req.params.id)
       .populate('members.user', 'username email firstName lastName')
-      .populate('members.role', 'name permissions')
-      .populate('projects', 'name description currentPhase');
-    
+      .populate('projects', 'name currentPhase');
+
     if (!team) {
       return res.status(404).json({ message: 'Team not found' });
     }
-    
+
     res.json(team);
   } catch (error) {
     console.error('Error fetching team:', error);
@@ -36,37 +35,31 @@ export const getTeamById = async (req, res) => {
   }
 };
 
-// Create team
+// Create new team
 export const createTeam = async (req, res) => {
   try {
-    const { name, description, members, projects } = req.body;
-    
+    const { name, description, members } = req.body;
+
+    if (!name || name.length < 3) {
+      return res.status(400).json({ 
+        message: 'Team name must be at least 3 characters long' 
+      });
+    }
+
     const team = new Team({
       name,
       description,
-      members: members || [],
-      projects: projects || []
+      members: members || []
     });
-    
+
     await team.save();
-    
-    // Update users' teams array
-    if (members && members.length) {
-      await Promise.all(members.map(async (member) => {
-        await User.findByIdAndUpdate(
-          member.user,
-          { $addToSet: { teams: team._id } }
-        );
-      }));
-    }
-    
-    // Log activity
+
     logActivity('createTeam', req.user.id, true, {
-      teamName: name,
-      memberCount: members?.length || 0
+      teamId: team._id,
+      teamName: name
     });
-    
-    res.status(201).json({ message: 'Team created successfully', team });
+
+    res.status(201).json(team);
   } catch (error) {
     console.error('Error creating team:', error);
     res.status(500).json({ message: 'Server error' });
@@ -77,59 +70,37 @@ export const createTeam = async (req, res) => {
 export const updateTeam = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, members, projects } = req.body;
-    
+    const { name, description, members } = req.body;
+
     const team = await Team.findById(id);
     if (!team) {
       return res.status(404).json({ message: 'Team not found' });
     }
-    
-    // Update basic info
+
     if (name) team.name = name;
     if (description) team.description = description;
-    if (projects) team.projects = projects;
-    
-    // Handle member updates
+
     if (members) {
-      // Get current team members
-      const currentMembers = team.members.map(m => m.user.toString());
-      
-      // Identify members to remove
-      const newMemberIds = members.map(m => m.user.toString());
-      const membersToRemove = currentMembers.filter(id => !newMemberIds.includes(id));
-      
-      // Remove team from users no longer in the team
-      await Promise.all(membersToRemove.map(async (userId) => {
-        await User.findByIdAndUpdate(
-          userId,
-          { $pull: { teams: team._id } }
-        );
-      }));
-      
-      // Add team to new users
-      const existingMemberIds = currentMembers;
-      const membersToAdd = members.filter(m => !existingMemberIds.includes(m.user.toString()));
-      
-      await Promise.all(membersToAdd.map(async (member) => {
-        await User.findByIdAndUpdate(
-          member.user,
-          { $addToSet: { teams: team._id } }
-        );
-      }));
-      
+      // Validate members
+      const validUsers = await User.find({ _id: { $in: members.map(m => m.user) } });
+      if (validUsers.length !== members.length) {
+        return res.status(400).json({ message: 'One or more invalid user IDs provided' });
+      }
+
       team.members = members;
     }
-    
-    team.updatedAt = Date.now();
+
     await team.save();
-    
-    // Log activity
+
     logActivity('updateTeam', req.user.id, true, {
       teamId: id,
-      updatedFields: Object.keys(req.body)
+      teamName: team.name
     });
-    
-    res.json({ message: 'Team updated successfully', team });
+
+    res.json({
+      message: 'Team updated successfully',
+      team
+    });
   } catch (error) {
     console.error('Error updating team:', error);
     res.status(500).json({ message: 'Server error' });
@@ -145,25 +116,38 @@ export const deleteTeam = async (req, res) => {
     if (!team) {
       return res.status(404).json({ message: 'Team not found' });
     }
-    
-    // Remove team reference from all users
-    const memberIds = team.members.map(member => member.user);
-    await User.updateMany(
-      { _id: { $in: memberIds } },
+
+    // Remove team references from projects
+    await Project.updateMany(
+      { teams: id },
       { $pull: { teams: id } }
     );
-    
+
     await Team.findByIdAndDelete(id);
-    
-    // Log activity
+
     logActivity('deleteTeam', req.user.id, true, {
       teamId: id,
       teamName: team.name
     });
-    
+
     res.json({ message: 'Team deleted successfully' });
   } catch (error) {
     console.error('Error deleting team:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get teams for a project
+export const getProjectTeams = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const teams = await Team.find({ projects: projectId })
+      .populate('members.user', 'username email firstName lastName');
+    
+    res.json(teams);
+  } catch (error) {
+    console.error('Error fetching project teams:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

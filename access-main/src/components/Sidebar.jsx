@@ -8,6 +8,7 @@ import {
   LogOut,
   ShieldCheck,
   Users,
+  UsersIcon,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -45,6 +46,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       path: "/project-management",
       icon: Laptop,
       label: "Project Management",
+    },
+    {
+      path: "/team-management",
+      icon: UsersIcon,
+      label: "Team Management",
     },
     { path: "/access-log", icon: Database, label: "Access-log" },
     { path: "/faq", icon: HelpCircleIcon, label: "FAQ" },
