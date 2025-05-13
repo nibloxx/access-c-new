@@ -8,6 +8,12 @@ const isValidPhaseTransition = (currentPhase, newPhase) => {
   const phaseOrder = ['planning', 'execution', 'review', 'closed'];
   const currentIndex = phaseOrder.indexOf(currentPhase);
   const newIndex = phaseOrder.indexOf(newPhase);
+  
+  // Allow transition to closed phase from any phase
+  if (newPhase === 'closed') {
+    return true;
+  }
+  
   return newIndex > currentIndex;
 };
 
@@ -48,22 +54,12 @@ export const getAllProjects = async (req, res) => {
 export const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const { name, description, teams, currentPhase } = req.body;
     
-    // Validate update data
-    const validationErrors = validateProjectUpdate(updateData);
-    if (validationErrors.length > 0) {
-      return res.status(400).json({ 
-        message: 'Validation failed',
-        errors: validationErrors
-      });
-    }
-
-    // Add logging to debug
     console.log('Update Project Request:', {
       id,
-      body: req.body,
-      user: req.user
+      currentPhase,
+      body: req.body
     });
 
     const project = await Project.findById(id);
@@ -72,14 +68,10 @@ export const updateProject = async (req, res) => {
     }
 
     // Phase transition validation
-    if (updateData.currentPhase && updateData.currentPhase !== project.currentPhase) {
-      const phases = ['planning', 'execution', 'review', 'closed'];
-      const currentIndex = phases.indexOf(project.currentPhase);
-      const newIndex = phases.indexOf(updateData.currentPhase);
-
-      if (newIndex <= currentIndex) {
+    if (currentPhase && currentPhase !== project.currentPhase) {
+      if (!isValidPhaseTransition(project.currentPhase, currentPhase)) {
         return res.status(400).json({ 
-          message: `Invalid phase transition from ${project.currentPhase} to ${updateData.currentPhase}`
+          message: `Invalid phase transition from ${project.currentPhase} to ${currentPhase}`
         });
       }
 
@@ -93,29 +85,29 @@ export const updateProject = async (req, res) => {
       }
 
       project.phaseHistory.push({
-        phase: updateData.currentPhase,
+        phase: currentPhase,
         startDate: new Date(),
         modifiedBy: req.user.id
       });
 
-      project.currentPhase = updateData.currentPhase;
+      project.currentPhase = currentPhase;
     }
 
     // Update basic info
-    if (updateData.name) project.name = updateData.name;
-    if (updateData.description) project.description = updateData.description;
+    if (name) project.name = name;
+    if (description) project.description = description;
 
     // Handle team updates
-    if (updateData.teams) {
+    if (teams) {
       // Validate teams array
-      if (!Array.isArray(updateData.teams)) {
+      if (!Array.isArray(teams)) {
         return res.status(400).json({ 
           message: 'Teams must be an array' 
         });
       }
 
-      const validTeams = await Team.find({ _id: { $in: updateData.teams } });
-      if (validTeams.length !== updateData.teams.length) {
+      const validTeams = await Team.find({ _id: { $in: teams } });
+      if (validTeams.length !== teams.length) {
         return res.status(400).json({ 
           message: 'One or more invalid team IDs provided' 
         });
@@ -128,11 +120,11 @@ export const updateProject = async (req, res) => {
       );
 
       await Team.updateMany(
-        { _id: { $in: updateData.teams } },
+        { _id: { $in: teams } },
         { $addToSet: { projects: project._id } }
       );
 
-      project.teams = updateData.teams;
+      project.teams = teams;
     }
 
     // Save the project
@@ -142,10 +134,10 @@ export const updateProject = async (req, res) => {
     console.log('Project updated successfully:', {
       projectId: project._id,
       updates: {
-        name: updateData.name ? 'updated' : 'unchanged',
-        description: updateData.description ? 'updated' : 'unchanged',
-        teams: updateData.teams ? 'updated' : 'unchanged',
-        phase: updateData.currentPhase ? 'updated' : 'unchanged'
+        name: name ? 'updated' : 'unchanged',
+        description: description ? 'updated' : 'unchanged',
+        teams: teams ? 'updated' : 'unchanged',
+        phase: currentPhase ? 'updated' : 'unchanged'
       }
     });
 
