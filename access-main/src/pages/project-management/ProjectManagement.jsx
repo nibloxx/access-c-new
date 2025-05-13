@@ -1,65 +1,97 @@
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import Badge from "../../components/ui/Badge";
+import PhaseWarningModal from "../../components/project-management/PhaseWarningModal";
+import ProjectForm from "../../components/project-management/ProjectForm";
+import ProjectListItem from "../../components/project-management/ProjectListItem";
+import ResourceManagementModal from "../../components/project-management/ResourceManagementModal";
+import TeamManagementModal from "../../components/project-management/TeamManagementModal";
 import Button from "../../components/ui/Button";
 import Loading from "../../components/ui/Loading";
-import Modal from "../../components/ui/Modal";
-import { baseDomain } from "../../utils/axios";
+import { axiosInstance } from "../../utils/axios";
+import { PHASE_PERMISSIONS, PROJECT_PHASES } from "../../utils/constants";
 
 const ProjectManagement = () => {
+  // State management
   const [project, setProject] = useState(null);
   const [projects, setProjects] = useState([]);
   const [showWarning, setShowWarning] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [showResourceModal, setShowResourceModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     teams: [],
+    currentPhase: PROJECT_PHASES.PLANNING
   });
 
-  const ALLOWED_ROLES = ["SuperAdmin", "Admin", "Manager"];
-  const userRoles = useSelector((state) => state.user.user.roles);
-  const API_URL = baseDomain;
+  const user = useSelector((state) => state.user.user);
 
-  const hasPermission = userRoles.some((role) => ALLOWED_ROLES.includes(role));
+  // Permission checks
+  const hasPermission = (phase, permissionType) => {
+    if (!phase) return false;
+    const permissions = PHASE_PERMISSIONS[phase];
+    return user.roles.some(role => permissions[permissionType]?.includes(role));
+  };
 
+  // Data fetching
   useEffect(() => {
     fetchProjects();
   }, []);
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get(`${API_URL}/projects`);
+      const response = await axiosInstance.get('/projects');  // Use axiosInstance
       setProjects(response.data);
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching projects:", error);
+      setIsLoading(false);
     }
   };
 
+  // Action handlers
   const handleCreateProject = async () => {
+    // Check permissions first
+    if (!hasPermission(PROJECT_PHASES.PLANNING, 'canEdit')) {
+      console.error("You don't have permission to create projects");
+      return;
+    }
+
+    // Validate form data
+    if (!formData.name.trim()) {
+      console.error("Project name is required");
+      return;
+    }
+
     try {
-      await axios.post(`${API_URL}/projects`, formData);
-      fetchProjects();
-      setFormData({ name: "", description: "", teams: [] });
+      const response = await axiosInstance.post('/projects', formData);  // Use axiosInstance
+      if (response.data) {
+        await fetchProjects();
+        resetForm();
+      }
     } catch (error) {
       console.error("Error creating project:", error);
     }
   };
 
   const handleUpdateProject = async () => {
-    if (project.currentPhase === "review" && !showWarning) {
+    const phase = project.currentPhase;
+    
+    if (phase === PROJECT_PHASES.REVIEW && !showWarning) {
       setShowWarning(true);
       return;
     }
 
+    if (phase === PROJECT_PHASES.CLOSED) {
+      return;
+    }
+
     try {
-      await axios.put(`${API_URL}/projects/${project._id}`, formData);
+      await axiosInstance.put(`/projects/${project._id}`, formData);  // Use axiosInstance
       fetchProjects();
-      setEditMode(false);
-      setShowWarning(false);
+      resetForm();
     } catch (error) {
       console.error("Error updating project:", error);
     }
@@ -67,69 +99,49 @@ const ProjectManagement = () => {
 
   const handleDeleteProject = async (projectId) => {
     try {
-      await axios.delete(`${API_URL}/projects/${projectId}`);
+      await axiosInstance.delete(`/projects/${projectId}`);  // Use axiosInstance
       fetchProjects();
     } catch (error) {
       console.error("Error deleting project:", error);
     }
   };
 
-  const getPhaseVariant = (phase) => {
-    switch (phase) {
-      case "planning":
-        return "bg-blue-100 text-blue-800";
-      case "execution":
-        return "bg-green-100 text-green-800";
-      case "review":
-        return "bg-yellow-100 text-yellow-800";
-      case "closed":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "default";
-    }
+  const handleTeamManagement = (project) => {
+    setProject(project);
+    setShowTeamModal(true);
   };
 
-  const canEdit = (project) => {
-    if (!project) return false;
-
-    switch (project.currentPhase) {
-      case "planning":
-        return ["admin", "teamLead"].includes(userRole);
-      case "execution":
-        return ["admin", "teamLead"].includes(userRole);
-      case "review":
-        return userRole === "admin";
-      case "closed":
-        return false;
-      default:
-        return false;
-    }
+  const handleResourceManagement = (project) => {
+    setProject(project);
+    setShowResourceModal(true);
   };
 
-  const canViewDocuments = (project) => {
-    return project.phasePermissions[
-      project.currentPhase
-    ].canViewDocuments.includes(userRole);
+  // Helper functions
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      teams: [],
+      currentPhase: PROJECT_PHASES.PLANNING
+    });
+    setEditMode(false);
+    setShowWarning(false);
+    setShowTeamModal(false);
+    setShowResourceModal(false);
+    setProject(null);
   };
 
-  const canEditModels = (project) => {
-    return project.phasePermissions[
-      project.currentPhase
-    ].canEditModels.includes(userRole);
-  };
-
-  if (isLoading) {
-    return <Loading />;
-  }
+  if (isLoading) return <Loading />;
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+        {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">
             Project Management
           </h2>
-          {hasPermission && (
+          {hasPermission(PROJECT_PHASES.PLANNING, 'canEdit') && (
             <Button
               onClick={() => setEditMode(true)}
               className="bg-green-600 hover:bg-green-700"
@@ -142,131 +154,58 @@ const ProjectManagement = () => {
         {/* Project List */}
         <div className="p-6 space-y-6">
           {projects.map((project) => (
-            <div
+            <ProjectListItem
               key={project._id}
-              className="border-b border-gray-200 pb-4 last:border-0"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <h3 className="text-lg font-medium">{project.name}</h3>
-                  <Badge variant={getPhaseVariant(project.currentPhase)}>
-                    {project.currentPhase}
-                  </Badge>
-                </div>
-
-                <div className="flex space-x-2">
-                  {canViewDocuments(project) && (
-                    <Button
-                      onClick={() => handleViewDocuments(project._id)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      View Documents
-                    </Button>
-                  )}
-                  {canEditModels(project) && (
-                    <Button
-                      onClick={() => handleEditModels(project._id)}
-                      className="bg-purple-600 hover:bg-purple-700"
-                    >
-                      Edit Models
-                    </Button>
-                  )}
-                  {canEdit(project) && (
-                    <Button
-                      onClick={() => handleEdit(project)}
-                      className="bg-yellow-600 hover:bg-yellow-700"
-                    >
-                      Edit
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
+              project={project}
+              hasPermission={hasPermission}
+              onEdit={() => {
+                setProject(project);
+                setEditMode(true);
+                setFormData({
+                  name: project.name,
+                  description: project.description,
+                  teams: project.teams,
+                  currentPhase: project.currentPhase
+                });
+              }}
+              onDelete={() => handleDeleteProject(project._id)}
+              onTeamManage={() => handleTeamManagement(project)}
+              onResourceManage={() => handleResourceManagement(project)}
+            />
           ))}
         </div>
       </div>
 
-      {/* Edit/Create Modal */}
-      <Modal
+      {/* Modals */}
+      <ProjectForm
         isOpen={editMode}
-        onClose={() => setEditMode(false)}
-        title={project ? "Edit Project" : "Create Project"}
-        maxWidth="max-w-lg"
-      >
-        <div className="space-y-4">
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Project Name"
-            className="w-full p-2 border rounded"
-          />
-          <textarea
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            placeholder="Project Description"
-            className="w-full p-2 border rounded"
-          />
-          <div className="flex justify-end space-x-3">
-            <Button
-              onClick={() => setEditMode(false)}
-              className="bg-gray-500 hover:bg-gray-600"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={project ? handleUpdateProject : handleCreateProject}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {project ? "Update" : "Create"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onClose={resetForm}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={project ? handleUpdateProject : handleCreateProject}
+        isEdit={!!project}
+      />
 
-      {/* Warning Modal */}
-      <Modal
+      <PhaseWarningModal
         isOpen={showWarning}
         onClose={() => setShowWarning(false)}
-        title="Warning"
-        maxWidth="max-w-lg"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center p-4 bg-yellow-50 rounded-lg">
-            <svg
-              className="w-5 h-5 mr-2 text-yellow-700"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              ></path>
-            </svg>
-            <span className="text-yellow-700">
-              Project is in {project?.currentPhase} phase. Are you sure you want
-              to make changes?
-            </span>
-          </div>
-          <div className="flex justify-end space-x-3">
-            <Button
-              onClick={() => setShowWarning(false)}
-              className="bg-gray-500 hover:bg-gray-600"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateProject}
-              className="bg-yellow-600 hover:bg-yellow-700"
-            >
-              Proceed
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onConfirm={handleUpdateProject}
+        phase={project?.currentPhase}
+      />
+
+      <TeamManagementModal
+        isOpen={showTeamModal}
+        onClose={() => setShowTeamModal(false)}
+        project={project}
+        onSave={handleUpdateProject}
+      />
+
+      <ResourceManagementModal
+        isOpen={showResourceModal}
+        onClose={() => setShowResourceModal(false)}
+        project={project}
+        onSave={handleUpdateProject}
+      />
     </div>
   );
 };

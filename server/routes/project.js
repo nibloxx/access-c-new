@@ -1,36 +1,39 @@
 import express from 'express';
 import * as projectController from '../controller/projectController.js';
+import { authenticate } from '../middleware/auth.js';
+import { checkProjectPermission, checkProjectRole } from '../middleware/projectAuth.js';
 
 const router = express.Router();
 
+// Apply base authentication to all routes
+router.use(authenticate);
+
+// Get all projects
 router.get('/', projectController.getAllProjects);
-// router.use(authenticate);
 
-router.get('/:id', projectController.getProjectById);
+// Get project by ID
+router.get('/:id', 
+  checkProjectPermission('canView'),
+  projectController.getProjectById
+);
 
+// Create project
 router.post('/', 
-  // authorizeAdmin, 
+  checkProjectRole(['Admin', 'Manager']),
+  checkProjectPermission('canCreate'),
   projectController.createProject
 );
 
+// Update project
 router.put('/:id', 
-  // authorizeAdmin,
-  // checkPhasePermission('editRoles'), 
+  checkProjectPermission('canEdit'),
   projectController.updateProject
 );
 
-router.put('/:id/models',
-  // checkPhasePermission('editModels'),
-  projectController.updateProjectModels
-);
-
-router.get('/:id/documents',
-  // checkPhasePermission('viewDocuments'),
-  projectController.getProjectDocuments
-);
-
+// Delete project
 router.delete('/:id', 
-  // authorizeAdmin, 
+  checkProjectRole(['Admin']),
+  checkProjectPermission('canEdit'),
   projectController.deleteProject
 );
 

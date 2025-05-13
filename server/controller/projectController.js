@@ -1,6 +1,7 @@
 import Project from '../model/Project.js';
 import Team from '../model/Team.js';
 import { logActivity } from '../utils/logger.js';
+import { checkPhasePermission } from '../utils/permissions.js';
 
 // Validate phase transition
 const isValidPhaseTransition = (currentPhase, newPhase) => {
@@ -10,27 +11,33 @@ const isValidPhaseTransition = (currentPhase, newPhase) => {
   return newIndex > currentIndex;
 };
 
-// Get all projects with phase-based filtering
+// Add at the top of the file
+const validateProjectUpdate = (data) => {
+  const errors = [];
+  
+  if (data.name && data.name.length < 3) {
+    errors.push('Project name must be at least 3 characters long');
+  }
+  
+  if (data.currentPhase && !['planning', 'execution', 'review', 'closed'].includes(data.currentPhase)) {
+    errors.push('Invalid phase');
+  }
+  
+  if (data.teams && !Array.isArray(data.teams)) {
+    errors.push('Teams must be an array');
+  }
+  
+  return errors;
+};
+
+// Get all projects
 export const getAllProjects = async (req, res) => {
   try {
-    const { phase, role } = req.query;
-    let query = {};
-    
-    if (phase) {
-      query.currentPhase = phase;
-    }
-
-    const projects = await Project.find(query)
+    const projects = await Project.find()
       .populate('teams', 'name')
       .populate('phaseHistory.modifiedBy', 'username');
-    
-    // Filter based on user role and phase permissions
-    const filteredProjects = projects.filter(project => {
-      const permissions = project.phasePermissions[project.currentPhase];
-      return permissions.canViewDocuments.includes(req.user.role);
-    });
-    
-    res.json(filteredProjects);
+
+    res.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
     res.status(500).json({ message: 'Server error' });
@@ -41,117 +48,116 @@ export const getAllProjects = async (req, res) => {
 export const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, teams, currentPhase } = req.body;
+    const updateData = req.body;
     
+    // Validate update data
+    const validationErrors = validateProjectUpdate(updateData);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ 
+        message: 'Validation failed',
+        errors: validationErrors
+      });
+    }
+
+    // Add logging to debug
+    console.log('Update Project Request:', {
+      id,
+      body: req.body,
+      user: req.user
+    });
+
     const project = await Project.findById(id);
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
-    
+
     // Phase transition validation
-    if (currentPhase && currentPhase !== project.currentPhase) {
-      if (!isValidPhaseTransition(project.currentPhase, currentPhase)) {
+    if (updateData.currentPhase && updateData.currentPhase !== project.currentPhase) {
+      const phases = ['planning', 'execution', 'review', 'closed'];
+      const currentIndex = phases.indexOf(project.currentPhase);
+      const newIndex = phases.indexOf(updateData.currentPhase);
+
+      if (newIndex <= currentIndex) {
         return res.status(400).json({ 
-          message: `Invalid phase transition from ${project.currentPhase} to ${currentPhase}`
+          message: `Invalid phase transition from ${project.currentPhase} to ${updateData.currentPhase}`
         });
       }
 
-      // Validate phase-specific requirements
-      if (currentPhase === 'execution') {
-        const hasTeams = project.teams && project.teams.length > 0;
-        if (!hasTeams) {
-          return res.status(400).json({ 
-            message: 'Project must have assigned teams before moving to execution phase'
-          });
-        }
-      }
-
-      // Close current phase and add new phase
+      // Update phase history
       const currentPhaseRecord = project.phaseHistory.find(
         ph => ph.phase === project.currentPhase && !ph.endDate
       );
       
       if (currentPhaseRecord) {
         currentPhaseRecord.endDate = new Date();
-        currentPhaseRecord.modifiedBy = req.user.id;
-      }
-      
-      project.phaseHistory.push({
-        phase: currentPhase,
-        startDate: new Date(),
-        endDate: null,
-        modifiedBy: req.user.id
-      });
-      
-      project.currentPhase = currentPhase;
-      
-      // Log phase change with detailed info
-      logActivity('changeProjectPhase', req.user.id, true, {
-        projectId: id,
-        oldPhase: project.currentPhase,
-        newPhase: currentPhase,
-        timestamp: new Date(),
-        reason: req.body.phaseChangeReason || 'Not specified'
-      });
-    }
-    
-    // Update basic info with validation
-    if (name) {
-      if (name.length < 3) {
-        return res.status(400).json({ message: 'Project name must be at least 3 characters long' });
-      }
-      project.name = name;
-    }
-    if (description) project.description = description;
-    
-    // Handle team updates with validation
-    if (teams) {
-      const validTeams = await Team.find({ _id: { $in: teams } });
-      if (validTeams.length !== teams.length) {
-        return res.status(400).json({ message: 'One or more invalid team IDs provided' });
       }
 
-      const currentTeams = project.teams.map(t => t.toString());
-      
-      // Handle team removals
-      const teamsToRemove = currentTeams.filter(teamId => !teams.includes(teamId));
-      await Promise.all(teamsToRemove.map(async (teamId) => {
-        await Team.findByIdAndUpdate(
-          teamId,
-          { $pull: { projects: project._id } }
-        );
-      }));
-      
-      // Handle team additions
-      const teamsToAdd = teams.filter(teamId => !currentTeams.includes(teamId));
-      await Promise.all(teamsToAdd.map(async (teamId) => {
-        await Team.findByIdAndUpdate(
-          teamId,
-          { $addToSet: { projects: project._id } }
-        );
-      }));
-      
-      project.teams = teams;
+      project.phaseHistory.push({
+        phase: updateData.currentPhase,
+        startDate: new Date(),
+        modifiedBy: req.user.id
+      });
+
+      project.currentPhase = updateData.currentPhase;
     }
-    
-    project.updatedAt = Date.now();
+
+    // Update basic info
+    if (updateData.name) project.name = updateData.name;
+    if (updateData.description) project.description = updateData.description;
+
+    // Handle team updates
+    if (updateData.teams) {
+      // Validate teams array
+      if (!Array.isArray(updateData.teams)) {
+        return res.status(400).json({ 
+          message: 'Teams must be an array' 
+        });
+      }
+
+      const validTeams = await Team.find({ _id: { $in: updateData.teams } });
+      if (validTeams.length !== updateData.teams.length) {
+        return res.status(400).json({ 
+          message: 'One or more invalid team IDs provided' 
+        });
+      }
+
+      // Update team references
+      await Team.updateMany(
+        { _id: { $in: project.teams } },
+        { $pull: { projects: project._id } }
+      );
+
+      await Team.updateMany(
+        { _id: { $in: updateData.teams } },
+        { $addToSet: { projects: project._id } }
+      );
+
+      project.teams = updateData.teams;
+    }
+
+    // Save the project
     await project.save();
-    
-    // Send detailed response
+
+    // Log successful update
+    console.log('Project updated successfully:', {
+      projectId: project._id,
+      updates: {
+        name: updateData.name ? 'updated' : 'unchanged',
+        description: updateData.description ? 'updated' : 'unchanged',
+        teams: updateData.teams ? 'updated' : 'unchanged',
+        phase: updateData.currentPhase ? 'updated' : 'unchanged'
+      }
+    });
+
     res.json({
       message: 'Project updated successfully',
-      project,
-      updates: {
-        phaseChanged: currentPhase !== undefined,
-        teamsModified: teams !== undefined,
-        detailsChanged: name !== undefined || description !== undefined
-      }
+      project
     });
   } catch (error) {
     console.error('Error updating project:', error);
     res.status(500).json({ 
-      message: 'Server error',
-      details: error.message
+      message: 'Error updating project',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 };
@@ -180,15 +186,19 @@ export const getProjectById = async (req, res) => {
   }
 };
 
-// Create new project
+// Create project
 export const createProject = async (req, res) => {
   try {
     const { name, description, teams } = req.body;
 
+    // Validate required fields
     if (!name || name.length < 3) {
-      return res.status(400).json({ message: 'Project name must be at least 3 characters long' });
+      return res.status(400).json({ 
+        message: 'Project name must be at least 3 characters long' 
+      });
     }
 
+    // Create project
     const project = new Project({
       name,
       description,
@@ -204,7 +214,7 @@ export const createProject = async (req, res) => {
     await project.save();
 
     // Update team references
-    if (teams && teams.length > 0) {
+    if (teams?.length > 0) {
       await Team.updateMany(
         { _id: { $in: teams } },
         { $addToSet: { projects: project._id } }
@@ -280,23 +290,18 @@ export const getProjectDocuments = async (req, res) => {
 // Delete project
 export const deleteProject = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    const project = await Project.findById(id);
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
+    const project = req.project; // Set by middleware
 
     // Remove project references from teams
     await Team.updateMany(
-      { projects: id },
-      { $pull: { projects: id } }
+      { projects: project._id },
+      { $pull: { projects: project._id } }
     );
 
-    await Project.findByIdAndDelete(id);
+    await Project.findByIdAndDelete(project._id);
 
     logActivity('deleteProject', req.user.id, true, {
-      projectId: id,
+      projectId: project._id,
       projectName: project.name
     });
 

@@ -99,3 +99,30 @@ export const RESOURCE_TYPES = {
     ADMIN: 'ADMIN',
     NONE: 'NONE'
   };
+
+
+  export const PROJECT_PHASES = {
+  PLANNING: 'planning',
+  EXECUTION: 'execution',
+  REVIEW: 'review',
+  CLOSED: 'closed'
+};
+
+export const PHASE_PERMISSIONS = {
+    [PROJECT_PHASES.PLANNING]: {
+      canEdit: ['SuperAdmin', 'Admin', 'Manager'],
+      canCreate: ['SuperAdmin', 'Admin', 'Manager'],
+      canEditTeams: ['SuperAdmin', 'Admin', 'Manager']
+    },
+    [PROJECT_PHASES.EXECUTION]: {
+      canEdit: ['SuperAdmin', 'Admin'],
+      canManageResources: ['SuperAdmin', 'Admin', 'Manager']
+    },
+    [PROJECT_PHASES.REVIEW]: {
+      canEdit: ['SuperAdmin', 'Admin'],
+      requiresWarning: true
+    },
+    [PROJECT_PHASES.CLOSED]: {
+      canView: ['SuperAdmin', 'Admin', 'Manager', 'Developer']
+    }
+  };
